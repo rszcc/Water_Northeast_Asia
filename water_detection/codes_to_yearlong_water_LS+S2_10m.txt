@@ -1,0 +1,45 @@
+// the code is used to load, visualize and export yearlong surface water at 10-m spatial resoultion
+// the 10-m maps were generated from Landsat and Sentinel-2 images
+// study area: Northeast Asia
+
+var waterCol10 = ee.ImageCollection('projects/ee-surfacewaterrr/assets/yearlong_water_Landsat_S2_10m') //10m
+
+/* image name format: Yearlong_water_2015_128_74_S2_LANDSAT_10m_2deg
+// 2015: year
+// 128: Lower left Longitude
+// 74: Lower Left Latitude
+// 2deg: grid size
+*/
+
+var ROI = ee.Geometry.Rectangle([122, 60, 123, 61],'EPSG:4326',false)
+Map.addLayer(ROI,{},'ROI')
+Map.centerObject(ROI,5);
+
+var year1 = 2015;
+var year2 = 2023;
+
+for(var i = year1; i <= year2; i++){
+  var year = i;
+  // filter data
+  var water = waterCol10.filter(ee.Filter.stringContains('system:index', String(year)))
+                      .filter(ee.Filter.stringContains('system:index', '10m'))
+                      .filter(ee.Filter.stringContains('system:index', 'Yearlong'))
+                      .filter(ee.Filter.stringContains('system:index', 'S2'))
+                      // .filterBounds(ROI)
+  
+  // 1: yearlong surface water; NoData (Masked): non-yearlong surface water
+  water = water.mosaic()//.clip(ROI)
+  
+  // visualize water map
+  Map.addLayer(water, {}, String(year), false)
+  
+  // export the image
+  Export.image.toDrive({
+    image: water.clip(ROI),
+    description: 'Yearlong_surface_water_10m_'+ year,
+    crs:'EPSG:4326',
+    scale: 10, 
+    region: ROI, 
+    maxPixels:1e13 
+});
+}

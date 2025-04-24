@@ -1,0 +1,44 @@
+// the code is used to load, visualize and export yearlong surface water at 30-m spatial resoultion
+// the 30-m maps were generated from Landsat images
+// study area: Northeast Asia
+
+var waterCol30 = ee.ImageCollection('projects/ee-surfacewaterrr/assets/yearlong_water_Landsat') 
+
+/* image name format: Yearlong_water_2000_100_50_LANDSAT_30m_5deg
+// 2000: year
+// 100: Lower left longitude
+// 50: Lower Left Latitude
+// 5deg: grid size
+*/
+
+var ROI = ee.Geometry.Rectangle([122, 60, 123, 61],'EPSG:4326',false)
+Map.addLayer(ROI,{},'ROI')
+Map.centerObject(ROI,5);
+
+var year1 = 2000;
+var year2 = 2023;
+
+for(var i = year1; i <= year2; i++){
+  var year = i;
+  // filter data
+  var water = waterCol30.filter(ee.Filter.stringContains('system:index', String(year)))
+                      .filter(ee.Filter.stringContains('system:index', '30m'))
+                      .filter(ee.Filter.stringContains('system:index', 'Yearlong'))
+                      // .filterBounds(ROI)
+  
+  // 1: yearlong surface water; NoData (Masked): non-yearlong surface water
+  water = water.mosaic()//.clip(ROI)
+  
+  // visualize water map
+  Map.addLayer(water, {}, String(year), false)
+  
+  // export the image
+  Export.image.toDrive({
+    image: water.clip(ROI),
+    description: 'Yearlong_surface_water_30m_'+ year,
+    crs:'EPSG:4326',
+    scale: 30, 
+    region: ROI, 
+    maxPixels:1e13 
+});
+}
